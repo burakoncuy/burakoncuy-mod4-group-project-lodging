@@ -1444,4 +1444,4 @@ Return spots filtered by query parameters.
       }
     }
     ```# mod4-group-project
-# personal
+# Lodging

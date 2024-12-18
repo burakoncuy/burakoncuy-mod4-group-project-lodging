@@ -33,13 +33,18 @@ router.delete('/:imageId', requireAuth, async (req, res, next) => {
         }
     })
 
+    // Check if the review belongs to the current user
+    if (reviewImageFromId.userId !== req.user.id) {
+        return res.status(403).json({
+            "message": "Successfully deleted"
+        });
+    }
+
     if (review.userId === user.id) {
         await reviewImageFromId.destroy();
-        res.status(200);
-        return res.json({ "message": "Successfully deleted" })
-    } else {
-        return res.json({ message: 'You are not authorized to delete this image' })
-    }
+        res.status(200).json({ "message": "Successfully deleted" })
+         
+    } 
 })
 
 
