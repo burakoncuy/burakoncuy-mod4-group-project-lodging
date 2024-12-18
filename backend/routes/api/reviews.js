@@ -14,72 +14,59 @@ router.use(express.json());
 router.get('/current', requireAuth, async (req, res) => {
     const { user } = req;
 
-    if (user) {
-        const userReviews = await Review.findAll({
-            where: {
-                userId: user.id
+    // Fetch reviews written by the current user
+    const reviews = await Review.findAll({
+        where: { userId: user.id },
+        include: [
+            {
+                model: User,
+                attributes: { exclude: ['username', 'email', 'hashedPassword', 'createdAt', 'updatedAt'] }
             },
-            include: [
-                {
-                    model: User,
-                    attributes: {
-                        exclude: ['username', 'email', 'hashedPassword', 'createdAt', 'updatedAt']
-                    }
-                },
-                {
-                    model: Spot,
-                    attributes: {
-                        exclude: ['description', 'createdAt', 'updatedAt']
-                    }
-                },
-                {
-                    model: ReviewImage,
-                    attributes: {
-                        exclude: ['reviewId', 'createdAt', 'updatedAt']
-                    }
-                }
-            ]
-        })
-        const reviewedSpotsImage = await SpotImage.findAll({
+            {
+                model: Spot,
+                attributes: { exclude: ['description', 'createdAt', 'updatedAt'] }
+            },
+            {
+                model: ReviewImage,
+                attributes: ['id', 'url']
+            }
+        ]
+    });
+
+    // Initialize the array to store modified reviews
+    const userReviewsCopy = [];
+
+    // Iterate through each review to add the preview image and structure the data correctly
+    for (let review of reviews) {
+        const reviewCopy = review.toJSON(); // Create a copy to work with
+
+        // Fetch the preview image for the spot (if exists)
+        const previewImage = await SpotImage.findOne({
+            attributes: ['url'],
             where: {
+                spotId: reviewCopy.Spot.id,
                 preview: true
             }
-        })
+        });
 
-
-        let spotIds = [];
-        let spotImages = []
-        let userReviewsCopy = []
-
-        for (let review of userReviews) {
-            spotIds.push(review.Spot.id);
+        // Add preview image to the Spot object
+        if (previewImage) {
+            reviewCopy.Spot.previewImage = previewImage.url;
+        } else {
+            reviewCopy.Spot.previewImage = null;
         }
 
-        console.log(spotIds)
+        // Ensure ReviewImages is always an array (even if empty)
+        reviewCopy.ReviewImages = reviewCopy.ReviewImages || [];
 
-        for (let spotImage of reviewedSpotsImage) {
-            if (spotIds.includes(spotImage.spotId)) {
-                spotImages.push(spotImage)
-            }
-        }
+        // Push the updated review to the array
+        userReviewsCopy.push(reviewCopy);
+    }
 
-        for (let review of userReviews) {
-            let reviewCopy = review.toJSON();
+    // Return the modified reviews
+    return res.status(200).json({ Reviews: userReviewsCopy });
+});
 
-            for (let previewImg of spotImages) {
-                if (previewImg.spotId = review.Spot.id) {
-                    reviewCopy.Spot.previewImage = previewImg.url;
-                }
-            }
-            userReviewsCopy.push(reviewCopy);
-        }
-
-    // res.json(spotImages);
-    return res.json({"Reviews": userReviewsCopy });
-    // res.json(reviewedSpotsImage)
-
-    } else return res.json({ user: null })
-})
 
 //add an image to a review based on the reviews's id *************************
 router.post('/:reviewId/images', requireAuth, async (req, res) => {
@@ -97,6 +84,13 @@ router.post('/:reviewId/images', requireAuth, async (req, res) => {
         return res.json({
             "message": "Review couldn't be found"
           })
+    }
+
+       // Check if the review belongs to the current user
+       if (reviewForPic.userId !== req.user.id) {
+        return res.status(403).json({
+            "message": "You are not authorized to add image to this review"
+        });
     }
 
     const reviewImages = await ReviewImage.findAll({
@@ -152,6 +146,13 @@ router.put('/:reviewId', requireAuth, validateReview, async (req, res) => {
         return res.json({
             "message": "Review couldn't be found"
           })
+    }
+
+      // Check if the review belongs to the current user
+      if (updatedReview.userId !== req.user.id) {
+        return res.status(403).json({
+            "message": "You are not authorized to update this review"
+        });
     }
 
     updatedReview.set({
