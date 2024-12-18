@@ -61,6 +61,17 @@ router.get('/', async (req, res, next) => {
 
 })
 
+
+
+//sgdrgerger
+//dfgdfgdf
+//dfgdfgdfg
+
+
+
+
+
+
 //get all spots owned/created by the current user ********************
 router.get('/current', requireAuth, async (req, res) => {
     const { user } = req;
