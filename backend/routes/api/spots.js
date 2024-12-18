@@ -3,63 +3,157 @@ const bcrypt = require('bcryptjs');
 
 const { setTokenCookie, requireAuth } = require('../../utils/auth');
 const { User, SpotImage, ReviewImage, Spot, Review, Booking } = require('../../db/models');
-const { check } = require('express-validator');
+const { check, validationResult } = require('express-validator');
 const { handleValidationErrors } = require('../../utils/validation');
-const { DataTypes } = require('sequelize');
-// const { default: spotReducer } = require('../../../frontend/src/store/spot');
+const { DataTypes , Op} = require('sequelize');
+
 const router = express.Router();
-// router.use(express.json());
 
 
-//get all spots ******************************************************
-router.get('/', async (req, res, next) => {
-    const allSpots = await Spot.findAll({
-        include: [
-            {
-                model: Review
-            },
-            {
-                model: SpotImage,
-                where: {
-                    preview: true
-                },
-                attributes: {
-                    exclude: ['id', 'spotId', 'preview', 'createdAt', 'updatedAt']
-                }
-            }
-        ]
+
+// Middleware to validate query parameters
+const validateFilter = [
+  check("page")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Page must be greater than or equal to 1"),
+  
+  check("size")
+    .optional()
+    .isInt({ min: 1, max: 20 })
+    .withMessage("Size must be between 1 and 20"),
+
+  check("minLat")
+    .optional()
+    .isDecimal({ min: -90, max: 90 })
+    .withMessage("Minimum latitude is invalid"),
+  
+  check("maxLat")
+    .optional()
+    .isDecimal({ min: -90, max: 90 })
+    .withMessage("Maximum latitude is invalid"),
+  
+  check("minLng")
+    .optional()
+    .isDecimal({ min: -180, max: 180 })
+    .withMessage("Minimum longitude is invalid"),
+  
+  check("maxLng")
+    .optional()
+    .isDecimal({ min: -180, max: 180 })
+    .withMessage("Maximum longitude is invalid"),
+  
+  check("minPrice")
+    .optional()
+    .isDecimal({ min: 0 })
+    .withMessage("Minimum price must be greater than or equal to 0"),
+  
+  check("maxPrice")
+    .optional()
+    .isDecimal({ min: 0 })
+    .withMessage("Maximum price must be greater than or equal to 0"),
+
+  // Handle validation errors
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: "Bad Request",
+        errors: errors.mapped(),
+      });
+    }
+    next();
+  }
+];
+
+// Route to fetch spots with query filters
+router.get('/', validateFilter, async (req, res) => {
+  let { minLat, maxLat, minLng, maxLng, minPrice, maxPrice, page, size } = req.query;
+
+  // Default values for pagination
+  page = parseInt(page) || 1;
+  size = parseInt(size) || 20;
+
+  // Ensure valid pagination
+  if (page < 1) page = 1;
+  if (size < 1) size = 1;
+  if (size > 20) size = 20;
+
+  const where = {};
+
+  // Latitude and Longitude filtering
+  if (minLat || maxLat) {
+    where.lat = {};
+    if (minLat) where.lat[Op.gte] = minLat;
+    if (maxLat) where.lat[Op.lte] = maxLat;
+  }
+
+  if (minLng || maxLng) {
+    where.lng = {};
+    if (minLng) where.lng[Op.gte] = minLng;
+    if (maxLng) where.lng[Op.lte] = maxLng;
+  }
+
+  // Price filtering
+  if (minPrice || maxPrice) {
+    where.price = {};
+    if (minPrice) where.price[Op.gte] = minPrice;
+    if (maxPrice) where.price[Op.lte] = maxPrice;
+  }
+
+  try {
+    // Fetch spots based on filters and pagination
+    const { rows: spots, count } = await Spot.findAndCountAll({
+      where,
+      limit: size,
+      offset: (page - 1) * size,
     });
 
-    const allSpotsCopy = [];
+    // Add average rating and preview image to each spot
+    for (let i = 0; i < spots.length; i++) {
+      const spot = spots[i];
 
-    allSpots.forEach(spot => {
-        let starsArr = [];
-        let spotCopy = spot.toJSON();
+      // Calculate the average rating for the spot
+      const reviews = await Review.findAll({
+        where: {
+          spotId: spot.id,
+        },
+      });
 
-        for (let review of spot.Reviews) {
-            starsArr.push(review.stars);
-        }
+      const reviewCount = reviews.length;
+      const reviewSum = await Review.sum("stars", {
+        where: { spotId: spot.id },
+      });
 
-        if (starsArr.length) {
-            const sumStars = starsArr.reduce((acc, curr) => acc + curr,);
+      const avgRating = reviewCount > 0 ? reviewSum / reviewCount : null;
+      spot.dataValues.avgRating = avgRating;
 
-            spotCopy.avgRating = sumStars / spot.Reviews.length;
-            delete spotCopy.Reviews;
-        } else {
-            spotCopy.avgRating = null;
-            delete spotCopy.Reviews;
-        }
+      // Fetch the preview image for the spot
+      const image = await SpotImage.findOne({
+        attributes: ["url"],
+        where: {
+          spotId: spot.id,
+          preview: true,
+        },
+      });
 
+      spot.dataValues.previewImage = image ? image.url : null;
+    }
 
-        spotCopy.previewImage = spot.SpotImages[0].url;
-        delete spotCopy.SpotImages;
+    // Calculate the total number of pages
+    const totalPages = Math.ceil(count / size);
 
-        allSpotsCopy.push(spotCopy)
-    })
-
-    res.json({ "Spots": allSpotsCopy });
-
-})
+    // Return response with spots, pagination info
+    return res.status(200).json({
+      Spots: spots,
+      page,
+      size,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 //get all spots owned/created by the current user ********************
 router.get('/current', requireAuth, async (req, res) => {
