@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 
 const { setTokenCookie, restoreUser } = require('../../utils/auth');
 const { User } = require('../../db/models');
-const { check } = require('express-validator');
+const { check, validationResult } = require('express-validator');
 const { handleValidationErrors } = require('../../utils/validation');
 
 const router = express.Router();
@@ -13,14 +13,26 @@ const router = express.Router();
 const validateLogin = [
   check('credential')
     .exists({ checkFalsy: true })
+    .withMessage('Email or username is required.')
     .notEmpty()
     .withMessage('Please provide a valid email or username.'),
   check('password')
     .exists({ checkFalsy: true })
+    .withMessage('Password is required.')
+    .notEmpty()
     .withMessage('Please provide a password.'),
-  handleValidationErrors
-];
 
+(req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      message: 'Bad Request',
+      errors: errors.mapped(),
+    });
+  }
+  next();
+}
+];
 // Log in
 router.post(
     '/',
@@ -28,6 +40,7 @@ router.post(
     async (req, res, next) => {
       const { credential, password } = req.body;
 
+      try {
       const user = await User.unscoped().findOne({
         where: {
           [Op.or]: {
@@ -38,11 +51,10 @@ router.post(
       });
 
       if (!user || !bcrypt.compareSync(password, user.hashedPassword.toString())) {
-        const err = new Error('Login failed');
-        err.status = 401;
-        err.title = 'Login failed';
-        err.errors = { credential: 'The provided credentials were invalid.' };
-        return next(err);
+        // Invalid credentials
+        return res.status(401).json({
+          message: 'Invalid credentials',
+        });
       }
 
       const safeUser = {
@@ -58,9 +70,11 @@ router.post(
       return res.json({
         user: safeUser
       });
+  
+    } catch (err) {
+      next(err);
     }
-  );
-
+  });
 // Log out
 router.delete(
     '/',
