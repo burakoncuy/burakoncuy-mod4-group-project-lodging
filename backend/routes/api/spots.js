@@ -126,22 +126,20 @@ router.get('/:spotId', async (req, res, next) => {
         include: [
             {
                 model: SpotImage,
-                required: false
             },
             User,
             {
                 model: Review,
-                required: false
             }
         ]
     });
 
     if (!spotFromId) {
-        res.status(404);
-        res.json({
-            "message": "Spot couldn't be found"
-        })
+        return res.status(404).json({
+            message: "Spot couldn't be found"
+        });
     }
+
     const owner = await User.findOne({
         where: {
             id: spotFromId.ownerId
@@ -149,11 +147,11 @@ router.get('/:spotId', async (req, res, next) => {
         attributes: {
             exclude: ['username']
         }
-    })
+    });
 
     const spotImages = await SpotImage.findAll({
         where: {
-            spotId: req.params.spotId,
+            spotId: req.params.spotId
         },
         attributes: {
             exclude: ['spotId', 'createdAt', 'updatedAt']
@@ -167,28 +165,33 @@ router.get('/:spotId', async (req, res, next) => {
     let starsArr = [];
 
     for (let review of spotFromId.Reviews) {
-        starRating = review.stars;
-        starsArr.push(starRating);
+        starsArr.push(review.stars);
     }
 
+    // Calculate avgStarRating
     if (starsArr.length) {
-        const sumStars = starsArr.reduce((acc, curr) => acc + curr,);
-
-        spotCopy.avgRating = sumStars / spotCopy.Reviews.length;
+        const sumStars = starsArr.reduce((acc, curr) => acc + curr, 0);
+        spotCopy.avgStarRating = sumStars / spotCopy.Reviews.length;
         delete spotCopy.Reviews;
     } else {
-        spotCopy.avgRating = null;
+        spotCopy.avgStarRating = null;
         delete spotCopy.Reviews;
     }
 
-    spotCopy.SpotImages = spotImages
-    delete spotCopy.Images
+    spotCopy.SpotImages = spotImages.map(img => ({
+        id: img.id,
+        url: img.url,
+        preview: img.preview
+    }));
 
-    spotCopy.Owner = owner
-    delete spotCopy.User
+    spotCopy.Owner = {
+        id: owner.id,
+        firstName: owner.firstName,
+        lastName: owner.lastName
+    };
 
     return res.json(spotCopy);
-})
+});
 
 //get all reviews from an spot's id ***********************************
 router.get('/:spotId/reviews', async (req, res, next) => {
