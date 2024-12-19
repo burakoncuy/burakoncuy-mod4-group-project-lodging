@@ -8,6 +8,7 @@ const { handleValidationErrors } = require('../../utils/validation');
 
 const router = express.Router();
 
+// Middleware to validate signup parameters
 const validateSignup = [
   check('email')
     .exists({ checkFalsy: true })
@@ -52,8 +53,5 @@ router.post(
       });
     }
   );
-
-
-
 
 module.exports = router;

@@ -6,10 +6,11 @@ const bcrypt = require('bcryptjs');
 const { setTokenCookie, restoreUser } = require('../../utils/auth');
 const { User } = require('../../db/models');
 const { check, validationResult } = require('express-validator');
-const { handleValidationErrors } = require('../../utils/validation');
-
+// const { handleValidationErrors } = require('../../utils/validation');
 const router = express.Router();
 
+
+// Middleware to validate login parameters
 const validateLogin = [
   check('credential')
     .exists({ checkFalsy: true })
@@ -33,6 +34,7 @@ const validateLogin = [
   next();
 }
 ];
+
 // Log in
 router.post(
     '/',
@@ -51,10 +53,8 @@ router.post(
       });
 
       if (!user || !bcrypt.compareSync(password, user.hashedPassword.toString())) {
-        // Invalid credentials
-        return res.status(401).json({
-          message: 'Invalid credentials',
-        });
+     
+        return res.status(401).json({ message: 'Invalid credentials' });
       }
 
       const safeUser = {
@@ -75,6 +75,8 @@ router.post(
       next(err);
     }
   });
+
+
 // Log out
 router.delete(
     '/',
@@ -83,6 +85,7 @@ router.delete(
       return res.json({ message: 'success' });
     }
   );
+
 
 // Restore session user
 router.get(
@@ -103,5 +106,7 @@ router.get(
       } else return res.json({ user: null });
     }
   );
+
+
 
 module.exports = router;
