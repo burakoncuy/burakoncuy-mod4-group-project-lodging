@@ -7,9 +7,7 @@ const { User, SpotImage, ReviewImage, Spot, Review, Booking } = require('../../d
 const { check } = require('express-validator');
 const { handleValidationErrors, handleValidationErrors403 } = require('../../utils/validation');
 const router = express.Router();
-// router.use(express.json());
 
-//Get all of the Current User's Bookings ***********************************
 router.get('/current', requireAuth, async (req, res) => {
     const { user } = req;
 
@@ -45,8 +43,6 @@ router.get('/current', requireAuth, async (req, res) => {
             spotIds.push(booking.spotId)
         }
 
-        // console.log(spotIds);
-
         for (let spot of allSpots) {
             if (spotIds.includes(spot.id)) {
                 bookedSpots.push(spot)
@@ -77,7 +73,6 @@ router.get('/current', requireAuth, async (req, res) => {
 
 })
 
-//Edit a Booking ********************************************************************
 const validateBooking = [
     check('endDate')
     .exists({ checkFalsy: true })
@@ -106,7 +101,6 @@ router.put('/:bookingId', requireAuth, validateBooking, async (req, res) => {
         }
     });
 
-
     if (!bookingFromId) {
         res.status(404);
         return res.json({
@@ -121,11 +115,6 @@ router.put('/:bookingId', requireAuth, validateBooking, async (req, res) => {
     });
 
     for (let booking of bookingCheck) {
-        // console.log('new booking start date:', Date.parse(startDate))
-        // console.log(typeof startDate)
-        // console.log('_____________________')
-        // console.log('existing booking start date:', Date.parse(booking.startDate))
-        // console.log(typeof booking.startDate)
 
         const newStartDate = Date.parse(startDate);
         const newEndDate = Date.parse(endDate);
@@ -153,25 +142,6 @@ router.put('/:bookingId', requireAuth, validateBooking, async (req, res) => {
             throw err;
         }
     }
-
-    //     if (newStartDate >= existingStartDate
-    //         && newStartDate <= existingEndDate) {
-    //             res.status(403);
-    //             return res.json({
-    //                 message: "Sorry, this spot is already booked for the specified dates",
-    //                 errors: {
-    //                     startDate: "Start date conflicts with an existing booking"
-    //                 }});
-    //         } else if (newEndDate >= existingStartDate
-    //             && newEndDate <= existingEndDate) {
-    //             res.status(403);
-    //             return res.json({
-    //                 message: "Sorry, this spot is already booked for the specified dates",
-    //                 errors: {
-    //                     endDate: "End date conflicts with an existing booking"
-    //                 }});
-    //         }
-    // }
 
     if (bookingFromId.userId === user.id) {
         const updatedBooking = bookingFromId.set({
@@ -202,16 +172,6 @@ router.put('/:bookingId', requireAuth, validateBooking, async (req, res) => {
     }
 })
 
-//delete a booking ***********************************************
-// const validateDeletion = [
-//     check('startDate')
-//     .exists({ checkFalsy: true })
-//     .isDate()
-//     .isAfter()
-//     .withMessage("Bookings that have been started can't be deleted"),
-//     handleValidationErrors403,
-// ];
-
 router.delete('/:bookingId', requireAuth, async (req, res, next) => {
     const { user } = req;
 
@@ -223,22 +183,6 @@ router.delete('/:bookingId', requireAuth, async (req, res, next) => {
             include: ['id']
         }
     });
-
-    // await bookingFromId.destroy();
-    //     res.status(200);
-    //     return res.json({ "message": "Successfully deleted" })
-
-    // const bookingFromPk = await Booking.findByPk(req.params.bookingId, {
-    //     attributes: {
-    //         include: ['id']
-    //     }
-    // })
-    // return res.json(bookingFromId)
-
-    // return res.json(bookingFromPk)
-
-    // const startDate = bookingFromId.startDate;
-    // return res.json(startDate)
 
     if (!bookingFromId) {
         res.status(404);
@@ -261,7 +205,5 @@ router.delete('/:bookingId', requireAuth, async (req, res, next) => {
         return res.json({ message: 'You are not authorized to delete this booking' })
     }
 })
-
-
 
 module.exports = router;

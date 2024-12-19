@@ -9,13 +9,9 @@ const { handleValidationErrors } = require('../../utils/validation');
 const router = express.Router();
 router.use(express.json());
 
-
-//get all reviews owned/created by the current user ********************
 router.get('/current', requireAuth, async (req, res) => {
-    const { user } = req;
-
-    // Fetch reviews written by the current user
-    const reviews = await Review.findAll({
+const { user } = req;
+ const reviews = await Review.findAll({
         where: { userId: user.id },
         include: [
             {
@@ -33,14 +29,9 @@ router.get('/current', requireAuth, async (req, res) => {
         ]
     });
 
-    // Initialize the array to store modified reviews
-    const userReviewsCopy = [];
-
-    // Iterate through each review to add the preview image and structure the data correctly
+ const userReviewsCopy = [];
     for (let review of reviews) {
-        const reviewCopy = review.toJSON(); // Create a copy to work with
-
-        // Fetch the preview image for the spot (if exists)
+        const reviewCopy = review.toJSON(); 
         const previewImage = await SpotImage.findOne({
             attributes: ['url'],
             where: {
@@ -48,27 +39,18 @@ router.get('/current', requireAuth, async (req, res) => {
                 preview: true
             }
         });
-
-        // Add preview image to the Spot object
         if (previewImage) {
             reviewCopy.Spot.previewImage = previewImage.url;
         } else {
             reviewCopy.Spot.previewImage = null;
         }
-
-        // Ensure ReviewImages is always an array (even if empty)
         reviewCopy.ReviewImages = reviewCopy.ReviewImages || [];
-
-        // Push the updated review to the array
         userReviewsCopy.push(reviewCopy);
     }
 
-    // Return the modified reviews
     return res.status(200).json({ Reviews: userReviewsCopy });
 });
 
-
-//add an image to a review based on the reviews's id *************************
 router.post('/:reviewId/images', requireAuth, async (req, res) => {
     const { url } = req.body;
     const { user } = req;
@@ -85,8 +67,6 @@ router.post('/:reviewId/images', requireAuth, async (req, res) => {
             "message": "Review couldn't be found"
           })
     }
-
-       // Check if the review belongs to the current user
        if (reviewForPic.userId !== req.user.id) {
         return res.status(403).json({
             "message": "You are not authorized to add image to this review"
@@ -98,8 +78,6 @@ router.post('/:reviewId/images', requireAuth, async (req, res) => {
             reviewId: req.params.reviewId
         }
     })
-
-    // return res.json(reviewImages.length)
     if (reviewImages.length >= 10) {
         res.status(403);
         return res.json({
@@ -119,7 +97,6 @@ router.post('/:reviewId/images', requireAuth, async (req, res) => {
     return res.json(newImageCopy)
 })
 
-//edit a review ***********************************************************
 const validateReview = [
     check('review')
       .exists({ checkFalsy: true })
@@ -147,8 +124,6 @@ router.put('/:reviewId', requireAuth, validateReview, async (req, res) => {
             "message": "Review couldn't be found"
           })
     }
-
-      // Check if the review belongs to the current user
       if (updatedReview.userId !== req.user.id) {
         return res.status(403).json({
             "message": "You are not authorized to update this review"
@@ -166,29 +141,24 @@ router.put('/:reviewId', requireAuth, validateReview, async (req, res) => {
 
 })
 
-//delete a review ***********************************************
 router.delete('/:reviewId', requireAuth, async (req, res, next) => {
     const reviewFromId = await Review.findOne({
         where: {
             id: req.params.reviewId
         },
     });
-
     if (!reviewFromId) {
         res.status(404);
         return res.json({
             "message": "Review couldn't be found"
           })
     }
-    // Check if the review belongs to the current user
     if (reviewFromId.userId !== req.user.id) {
         return res.status(403).json({
             "message": "You are not authorized to delete this review"
         });
     }
-
     await reviewFromId.destroy();
     return res.status(200).json({ "message": "Successfully deleted" })
-
 })
 module.exports = router;

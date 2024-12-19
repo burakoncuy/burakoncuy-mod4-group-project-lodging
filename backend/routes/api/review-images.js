@@ -7,10 +7,7 @@ const { User, SpotImage, ReviewImage, Spot, Review, Booking } = require('../../d
 const { check } = require('express-validator');
 const { handleValidationErrors, handleValidationErrors403 } = require('../../utils/validation');
 const router = express.Router();
-// router.use(express.json());
 
-
-//delete a review image ***********************************************
 router.delete('/:imageId', requireAuth, async (req, res, next) => {
     const { user } = req;
 
@@ -33,7 +30,6 @@ router.delete('/:imageId', requireAuth, async (req, res, next) => {
         }
     })
 
-    // Check if the review belongs to the current user
     if (reviewImageFromId.userId !== req.user.id) {
         return res.status(403).json({
             "message": "Successfully deleted"
