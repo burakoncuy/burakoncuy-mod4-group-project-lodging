@@ -73,6 +73,7 @@ router.get('/', validateFilter, async (req, res) => {
   // Default values for pagination
   page = parseInt(page) || 1;
   size = parseInt(size) || 20;
+  
 
   // Ensure valid pagination
   if (page < 1) page = 1;
@@ -80,6 +81,14 @@ router.get('/', validateFilter, async (req, res) => {
   if (size > 20) size = 20;
 
   const where = {};
+
+  // Convert query parameters to numbers where necessary
+  if (minLat) minLat = parseFloat(minLat);
+  if (maxLat) maxLat = parseFloat(maxLat);
+  if (minLng) minLng = parseFloat(minLng);
+  if (maxLng) maxLng = parseFloat(maxLng);
+  if (minPrice) minPrice = parseFloat(minPrice);
+  if (maxPrice) maxPrice = parseFloat(maxPrice);
 
   // Latitude and Longitude filtering
   if (minLat || maxLat) {
@@ -138,6 +147,11 @@ router.get('/', validateFilter, async (req, res) => {
       });
 
       spot.dataValues.previewImage = image ? image.url : null;
+
+      // Convert lat, lng, and price to numbers (in case they are strings from DB)
+      spot.dataValues.lat = parseFloat(spot.lat);  // Ensure lat is a float
+      spot.dataValues.lng = parseFloat(spot.lng);  // Ensure lng is a float
+      spot.dataValues.price = parseInt(spot.price, 10);  // Ensure price is an integer
     }
 
     // Calculate the total number of pages
