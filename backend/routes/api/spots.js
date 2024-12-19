@@ -13,148 +13,153 @@ const router = express.Router();
 
 // Middleware to validate query parameters
 const validateFilter = [
-  check("page")
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage("Page must be greater than or equal to 1"),
+    check("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be greater than or equal to 1"),
   
-  check("size")
-    .optional()
-    .isInt({ min: 1, max: 20 })
-    .withMessage("Size must be between 1 and 20"),
-
-  check("minLat")
-    .optional()
-    .isDecimal({ min: -90, max: 90 })
-    .withMessage("Minimum latitude is invalid"),
+    check("size")
+      .optional()
+      .isInt({ min: 1, max: 20 })
+      .withMessage("Size must be between 1 and 20"),
   
-  check("maxLat")
-    .optional()
-    .isDecimal({ min: -90, max: 90 })
-    .withMessage("Maximum latitude is invalid"),
+    check("minLat")
+      .optional()
+      .isDecimal({ min: -90, max: 90 })
+      .withMessage("Minimum latitude is invalid"),
   
-  check("minLng")
-    .optional()
-    .isDecimal({ min: -180, max: 180 })
-    .withMessage("Minimum longitude is invalid"),
+    check("maxLat")
+      .optional()
+      .isDecimal({ min: -90, max: 90 })
+      .withMessage("Maximum latitude is invalid"),
   
-  check("maxLng")
-    .optional()
-    .isDecimal({ min: -180, max: 180 })
-    .withMessage("Maximum longitude is invalid"),
+    check("minLng")
+      .optional()
+      .isDecimal({ min: -180, max: 180 })
+      .withMessage("Minimum longitude is invalid"),
   
-  check("minPrice")
-    .optional()
-    .isDecimal({ min: 0 })
-    .withMessage("Minimum price must be greater than or equal to 0"),
+    check("maxLng")
+      .optional()
+      .isDecimal({ min: -180, max: 180 })
+      .withMessage("Maximum longitude is invalid"),
   
-  check("maxPrice")
-    .optional()
-    .isDecimal({ min: 0 })
-    .withMessage("Maximum price must be greater than or equal to 0"),
-
-  // Handle validation errors
-  (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        message: "Bad Request",
-        errors: errors.mapped(),
-      });
+    check("minPrice")
+      .optional()
+      .isDecimal({ min: 0 })
+      .withMessage("Minimum price must be greater than or equal to 0"),
+  
+    check("maxPrice")
+      .optional()
+      .isDecimal({ min: 0 })
+      .withMessage("Maximum price must be greater than or equal to 0"),
+  
+    // Handle validation errors
+    (req, res, next) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: "Bad Request",
+          errors: errors.mapped(),
+        });
+      }
+      next();
+    },
+  ];
+  
+  // Route to fetch spots with query filters
+  router.get('/', validateFilter, async (req, res) => {
+    let { minLat, maxLat, minLng, maxLng, minPrice, maxPrice, page, size } = req.query;
+  
+    // Default values for pagination
+    page = parseInt(page, 10) || 1;
+    size = parseInt(size, 10) || 20;
+  
+    // Ensure valid pagination
+    page = Math.max(1, page);
+    size = Math.max(1, Math.min(20, size));
+  
+    const where = {};
+  
+    // Latitude and Longitude filtering
+    if (minLat || maxLat) {
+      where.lat = {};
+      if (minLat) where.lat[Op.gte] = parseFloat(minLat);  // Ensure it's a number
+      if (maxLat) where.lat[Op.lte] = parseFloat(maxLat);  // Ensure it's a number
     }
-    next();
-  }
-];
-
-// Route to fetch spots with query filters
-router.get('/', validateFilter, async (req, res) => {
-  let { minLat, maxLat, minLng, maxLng, minPrice, maxPrice, page, size } = req.query;
-
-  // Default values for pagination
-  page = parseInt(page) || 1;
-  size = parseInt(size) || 20;
-
-  // Ensure valid pagination
-  if (page < 1) page = 1;
-  if (size < 1) size = 1;
-  if (size > 20) size = 20;
-
-  const where = {};
-
-  // Latitude and Longitude filtering
-  if (minLat || maxLat) {
-    where.lat = {};
-    if (minLat) where.lat[Op.gte] = minLat;
-    if (maxLat) where.lat[Op.lte] = maxLat;
-  }
-
-  if (minLng || maxLng) {
-    where.lng = {};
-    if (minLng) where.lng[Op.gte] = minLng;
-    if (maxLng) where.lng[Op.lte] = maxLng;
-  }
-
-  // Price filtering
-  if (minPrice || maxPrice) {
-    where.price = {};
-    if (minPrice) where.price[Op.gte] = minPrice;
-    if (maxPrice) where.price[Op.lte] = maxPrice;
-  }
-
-  try {
-    // Fetch spots based on filters and pagination
-    const { rows: spots, count } = await Spot.findAndCountAll({
-      where,
-      limit: size,
-      offset: (page - 1) * size,
-    });
-
-    // Add average rating and preview image to each spot
-    for (let i = 0; i < spots.length; i++) {
-      const spot = spots[i];
-
-      // Calculate the average rating for the spot
-      const reviews = await Review.findAll({
-        where: {
-          spotId: spot.id,
-        },
-      });
-
-      const reviewCount = reviews.length;
-      const reviewSum = await Review.sum("stars", {
-        where: { spotId: spot.id },
-      });
-
-      const avgRating = reviewCount > 0 ? reviewSum / reviewCount : null;
-      spot.dataValues.avgRating = avgRating;
-
-      // Fetch the preview image for the spot
-      const image = await SpotImage.findOne({
-        attributes: ["url"],
-        where: {
-          spotId: spot.id,
-          preview: true,
-        },
-      });
-
-      spot.dataValues.previewImage = image ? image.url : null;
+  
+    if (minLng || maxLng) {
+      where.lng = {};
+      if (minLng) where.lng[Op.gte] = parseFloat(minLng);  // Ensure it's a number
+      if (maxLng) where.lng[Op.lte] = parseFloat(maxLng);  // Ensure it's a number
     }
-
-    // Calculate the total number of pages
-    const totalPages = Math.ceil(count / size);
-
-    // Return response with spots, pagination info
-    return res.status(200).json({
-      Spots: spots,
-      page,
-      size,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
+  
+    // Price filtering
+    if (minPrice || maxPrice) {
+      where.price = {};
+      if (minPrice) where.price[Op.gte] = parseFloat(minPrice);  // Ensure it's a number
+      if (maxPrice) where.price[Op.lte] = parseFloat(maxPrice);  // Ensure it's a number
+    }
+  
+    try {
+      // Fetch spots based on filters and pagination
+      const { rows: spots, count } = await Spot.findAndCountAll({
+        where,
+        limit: size,
+        offset: (page - 1) * size,
+        include: [
+          {
+            model: Review,
+            attributes: [[sequelize.fn('AVG', sequelize.col('stars')), 'avgRating']],
+          },
+          {
+            model: SpotImage,
+            attributes: ['url'],
+            where: { preview: true },
+            required: false, // Don't fail if there's no preview image
+          },
+        ],
+        group: ['Spot.id'], // Group by spot to calculate avgRating
+      });
+  
+      // Add average rating and preview image to each spot
+      const spotDetails = spots.map(spot => {
+        const avgRating = spot.Reviews[0]?.avgRating || null; // Extract avgRating from reviews
+        const previewImage = spot.SpotImages[0]?.url || null; // Extract preview image
+  
+        // Ensure lat, lng, price are explicitly returned as numbers
+        return {
+          id: spot.id,
+          ownerId: spot.ownerId,
+          address: spot.address,
+          city: spot.city,
+          state: spot.state,
+          country: spot.country,
+          lat: parseFloat(spot.lat),  // Ensure lat is a number
+          lng: parseFloat(spot.lng),  // Ensure lng is a number
+          name: spot.name,
+          description: spot.description,
+          price: parseFloat(spot.price),  // Ensure price is a number
+          createdAt: spot.createdAt,
+          updatedAt: spot.updatedAt,
+          avgRating,
+          previewImage,
+        };
+      });
+  
+      // Calculate the total number of pages
+      const totalPages = Math.ceil(count / size);
+  
+      return res.status(200).json({
+        Spots: spotDetails,
+        page,
+        size,
+        totalPages,
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
 
 
 //sgdrgerger
