@@ -45,7 +45,7 @@ router.get('/current', requireAuth, async (req, res) => {
             spotIds.push(booking.spotId)
         }
 
-        // console.log(spotIds);
+       
 
         for (let spot of allSpots) {
             if (spotIds.includes(spot.id)) {
