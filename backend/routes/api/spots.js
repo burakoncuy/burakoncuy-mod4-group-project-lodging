@@ -136,6 +136,11 @@ router.get('/', validateFilter, async (req, res) => {
       });
 
       spot.dataValues.previewImage = image ? image.url : null;
+
+      spot.dataValues.lat = parseFloat(spot.lat); 
+      spot.dataValues.lng = parseFloat(spot.lng); 
+      spot.dataValues.price = parseInt(spot.price, 10); 
+      
     }
 
     const totalPages = Math.ceil(count / size);
