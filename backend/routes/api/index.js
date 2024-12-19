@@ -1,3 +1,4 @@
+
 const router = require('express').Router();
 const sessionRouter = require('./session.js');
 const usersRouter = require('./users.js');
@@ -6,7 +7,8 @@ const reviewsRouter = require('./reviews.js')
 const bookingsRouter = require('./bookings.js')
 const spotImagesRouter = require('./spot-images.js')
 const reviewImagesRouter = require('./review-images.js')
-
+const { setTokenCookie } = require('../../utils/auth.js');
+const { User } = require('../../db/models');
 const { restoreUser } = require('../../utils/auth.js');
 
 router.use(restoreUser);
@@ -26,14 +28,12 @@ router.use('/spot-images', spotImagesRouter);
 router.use('/review-images', reviewImagesRouter);
 
 
-const { setTokenCookie } = require('../../utils/auth.js');
-const { User } = require('../../db/models');
-
 router.post('/test', function(req, res) {
     res.json({ requestBody: req.body });
   });
 
-router.get('/set-token-cookie', async (_req, res) => {
+
+  router.get('/set-token-cookie', async (_req, res) => {
   const user = await User.findOne({
     where: {
       username: 'Demo-lition'
@@ -43,12 +43,14 @@ router.get('/set-token-cookie', async (_req, res) => {
   return res.json({ user: user });
 });
 
+
 router.get(
   '/restore-user',
   (req, res) => {
     return res.json(req.user);
   }
 );
+
 
 const { requireAuth } = require('../../utils/auth.js');
 router.get(

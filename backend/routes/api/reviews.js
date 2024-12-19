@@ -1,7 +1,6 @@
 
 const express = require('express')
 const bcrypt = require('bcryptjs');
-
 const { setTokenCookie, requireAuth } = require('../../utils/auth');
 const { User, ReviewImage, SpotImage, Spot, Review } = require('../../db/models');
 const { check } = require('express-validator');
@@ -9,6 +8,8 @@ const { handleValidationErrors } = require('../../utils/validation');
 const router = express.Router();
 router.use(express.json());
 
+
+// Get all Reviews of the Current User
 router.get('/current', requireAuth, async (req, res) => {
 const { user } = req;
  const reviews = await Review.findAll({
@@ -51,6 +52,8 @@ const { user } = req;
     return res.status(200).json({ Reviews: userReviewsCopy });
 });
 
+
+// Add an Image to a Review based on the Review's id
 router.post('/:reviewId/images', requireAuth, async (req, res) => {
     const { url } = req.body;
     const { user } = req;
@@ -89,9 +92,9 @@ router.post('/:reviewId/images', requireAuth, async (req, res) => {
 
     const newImageCopy = newReviewImage.toJSON();
 
-    delete newImageCopy.reviewId;
-    delete newImageCopy.updatedAt;
-    delete newImageCopy.createdAt;
+    // delete newImageCopy.reviewId;
+    // delete newImageCopy.updatedAt;
+    // delete newImageCopy.createdAt;
 
     res.status(201);
     return res.json(newImageCopy)
@@ -108,6 +111,8 @@ const validateReview = [
     handleValidationErrors
   ];
 
+
+// Edit a Review  
 router.put('/:reviewId', requireAuth, validateReview, async (req, res) => {
     const { review, stars } = req.body;
     const { user } = req;
@@ -141,6 +146,8 @@ router.put('/:reviewId', requireAuth, validateReview, async (req, res) => {
 
 })
 
+
+// Delete a Review
 router.delete('/:reviewId', requireAuth, async (req, res, next) => {
     const reviewFromId = await Review.findOne({
         where: {
@@ -161,4 +168,7 @@ router.delete('/:reviewId', requireAuth, async (req, res, next) => {
     await reviewFromId.destroy();
     return res.status(200).json({ "message": "Successfully deleted" })
 })
+
+
+
 module.exports = router;

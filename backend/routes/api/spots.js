@@ -1,16 +1,14 @@
-const express = require('express')
-// const bcrypt = require('bcryptjs');
 
+const express = require('express');
 const { setTokenCookie, requireAuth } = require('../../utils/auth');
 const { User, SpotImage, ReviewImage, Spot, Review, Booking } = require('../../db/models');
 const { check, validationResult } = require('express-validator');
 const { handleValidationErrors } = require('../../utils/validation');
 const { Op } = require('sequelize');
-
 const router = express.Router();
 
 
-// Middleware to validate query parameters
+
 const validateFilter = [
   check("page")
     .optional()
@@ -52,7 +50,6 @@ const validateFilter = [
     .isDecimal({ min: 0 })
     .withMessage("Maximum price must be greater than or equal to 0"),
 
-  // Handle validation errors
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -532,7 +529,6 @@ router.post('/:spotId/bookings', requireAuth, validateBooking, async (req, res, 
             updatedAt: new Date()
         })
 
-        // res.status(201);
         const newBookingWithId = await Booking.findOne({
             where: {
                 spotId: newBooking.spotId,
@@ -550,7 +546,8 @@ router.post('/:spotId/bookings', requireAuth, validateBooking, async (req, res, 
     }
 })
 
-// Create a Spot
+
+
 const validateSpot = [
     check('address')
         .notEmpty()
@@ -585,6 +582,7 @@ const validateSpot = [
     handleValidationErrors
 ]
 
+// Create a Spot
 router.post('/', requireAuth, validateSpot,
     async (req, res) => {
         const { address, city, state, country, lat, lng, name, description, price } = req.body;
@@ -598,10 +596,10 @@ router.post('/', requireAuth, validateSpot,
         }
         const spot = await Spot.create({ ownerId: userId, address, city, state, country, lat, lng, name, description, price });
 
-        // res.status(201);
         return res.status(201).json(spot)
     }
 )
+
 
 // Add an Image to a Spot based on the Spot's id
 router.post('/:spotId/images', requireAuth, async (req, res) => {
@@ -615,7 +613,6 @@ router.post('/:spotId/images', requireAuth, async (req, res) => {
     });
 
     if (!spotForPic) {
-        // res.status(404);
         res.status(404).json({
             "message": "Spot couldn't be found"
         })
@@ -629,7 +626,6 @@ router.post('/:spotId/images', requireAuth, async (req, res) => {
         delete newImageCopy.updatedAt;
         delete newImageCopy.createdAt;
 
-        // res.status(201);
         return res.status(201).json(newImageCopy)
     } else {
         res.status(403);
@@ -653,7 +649,6 @@ router.put('/:spotId', requireAuth, validateSpot, async (req, res) => {
     })
 
     if (!updatedSpot) {
-        // res.status(404);
         res.status(404).json({
             "message": "Spot couldn't be found"
         })
@@ -666,7 +661,6 @@ router.put('/:spotId', requireAuth, validateSpot, async (req, res) => {
 
         return res.json(updatedSpot);
     } else {
-        // res.status(403);
         return res.status(403).json({
             "message": "Forbidden"
         })
@@ -685,7 +679,6 @@ router.delete('/:spotId', requireAuth, async (req, res, next) => {
     });
 
     if (!spotFromId) {
-        // res.status(404);
         res.status(404).json({
             "message": "Spot couldn't be found"
         })
@@ -693,10 +686,8 @@ router.delete('/:spotId', requireAuth, async (req, res, next) => {
 
     if (spotFromId.ownerId === user.id) {
         await spotFromId.destroy();
-        // res.status(200);
         return res.status(200).json({ "message": "Successfully deleted" })
     } else {
-        // res.status(403);
         return res.status(403).json({
             "message": "Forbidden"
         })

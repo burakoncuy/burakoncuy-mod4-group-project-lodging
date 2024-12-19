@@ -1,13 +1,14 @@
 
 const express = require('express')
 const bcrypt = require('bcryptjs');
-
 const { setTokenCookie, requireAuth } = require('../../utils/auth');
 const { User, SpotImage, ReviewImage, Spot, Review, Booking } = require('../../db/models');
 const { check } = require('express-validator');
 const { handleValidationErrors, handleValidationErrors403 } = require('../../utils/validation');
 const router = express.Router();
 
+
+// Get all of the Current User's Bookings
 router.get('/current', requireAuth, async (req, res) => {
     const { user } = req;
 
@@ -75,6 +76,8 @@ router.get('/current', requireAuth, async (req, res) => {
 
 })
 
+
+
 const validateBooking = [
     check('endDate')
     .exists({ checkFalsy: true })
@@ -93,6 +96,8 @@ const validateBooking = [
     handleValidationErrors
 ];
 
+
+// Edit a Booking
 router.put('/:bookingId', requireAuth, validateBooking, async (req, res) => {
     const { startDate, endDate} = req.body;
     const { user } = req;
@@ -174,6 +179,8 @@ router.put('/:bookingId', requireAuth, validateBooking, async (req, res) => {
     }
 })
 
+
+// Delete a Booking
 router.delete('/:bookingId', requireAuth, async (req, res, next) => {
     const { user } = req;
 
@@ -207,5 +214,7 @@ router.delete('/:bookingId', requireAuth, async (req, res, next) => {
         return res.json({ message: 'You are not authorized to delete this booking' })
     }
 })
+
+
 
 module.exports = router;

@@ -1,11 +1,7 @@
 
-const express = require('express')
-// const bcrypt = require('bcryptjs');
-
+const express = require('express');
 const { setTokenCookie, requireAuth } = require('../../utils/auth');
 const { SpotImage, Spot } = require('../../db/models');
-// const { check } = require('express-validator');
-// const { handleValidationErrors, handleValidationErrors403 } = require('../../utils/validation');
 const router = express.Router();
 
 
